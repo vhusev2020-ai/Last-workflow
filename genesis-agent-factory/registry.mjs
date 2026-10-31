@@ -43,8 +43,8 @@ export function createRegistry({clock=now}={}) {
     if(!allowed[a.status]?.includes(next))throw new PolicyError("Invalid status transition: "+a.status+" → "+next);
     if(next==="approved"||next==="active")if(actor!=="human-founder")throw new PolicyError("Human approval is required.");
     if(next==="approved"&&!evidence)throw new PolicyError("Approval requires test evidence.");
-    a.status=next;if(next==="approved"||next==="active")a.approved_by=actor;
-    event("agent.status_changed",id,{from:allowed, to:next,actor,evidence:!!evidence});return get(id);
+    const previous=a.status;a.status=next;if(next==="approved"||next==="active")a.approved_by=actor;
+    event("agent.status_changed",id,{from:previous,to:next,actor,evidence:!!evidence});return get(id);
   }
   function can(id,permission){const a=agents.get(id);return !!a&&a.status==="active"&&a.permissions.includes(permission)&&!RESERVED.has(permission);}
   function pause(id,{actor="human-founder",reason="Safety pause"}={}){const a=agents.get(id);if(!a)throw new PolicyError("Unknown agent.");if(!["active","approved","testing","draft"].includes(a.status))return get(id);a.status="paused";event("agent.paused",id,{actor,reason});return get(id);}
