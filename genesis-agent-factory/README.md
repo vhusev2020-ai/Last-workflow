@@ -1,18 +1,23 @@
-# Genesis Agent Factory — Registry Prototype
+# Genesis Agent Factory — Background Runtime Prototype
 
-Dependency-free JavaScript foundation for agent records, bounded child creation, status transitions, inherited permissions, pause behavior, and audit events.
+Dependency-free Node.js 20+ prototype with a file-backed task queue and one-task worker. The queue persists between invocations and recovers abandoned tasks through expiring leases.
 
-## Requirements
-Node.js 18+ (uses built-in modules and `structuredClone`).
-
-## Run tests
+## Run locally
 ```sh
-node --test genesis-agent-factory/registry.test.mjs
+node --test genesis-agent-factory/*.test.mjs
+GENESIS_TASK_STORE=./.genesis-data/tasks.json node genesis-agent-factory/queue.mjs add echo '{"message":"Genesis is awake"}'
+GENESIS_TASK_STORE=./.genesis-data/tasks.json node genesis-agent-factory/worker.mjs
+GENESIS_TASK_STORE=./.genesis-data/tasks.json node genesis-agent-factory/queue.mjs list
 ```
 
-## Important limitations
-- In-memory only: records disappear when the process exits.
-- No authentication, database, API server, worker, scheduler, model connection, or live agent execution.
-- Founder approval is represented by an explicit actor argument for prototype testing; production must derive identity from authenticated server-side sessions, never client-supplied strings.
-- The registry intentionally defaults to zero spending and no external actions.
-- This is not production security. Do not expose it as an internet-facing permission service until persistent storage, authentication, server-side authorization, audit durability, and security tests exist.
+Supported task types are deliberately limited to `echo` and `health-check`. No arbitrary code execution, model calls, shell commands, network actions, spending, or external communications are enabled.
+
+## Background scheduling
+The GitHub Actions workflow runs automated tests on changes. A scheduled workflow can invoke a worker, but GitHub-hosted runner storage is ephemeral; it is not a durable database or an always-on worker. For real unattended execution, connect a private persistent database and authenticated API, then run the worker on a host with durable storage or a managed queue. Do not put private task data in this public repository.
+
+## Limitations
+- File-backed store is suitable for local/single-process prototype use, not concurrent multi-instance production.
+- Use Postgres transactions/row locks or a managed queue before multiple workers.
+- Authentication and server-enforced permissions are not implemented here.
+- Agent registry remains an in-memory prototype.
+- No live autonomous agents or production deployment are created by this package.
