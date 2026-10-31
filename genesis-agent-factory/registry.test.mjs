@@ -1,0 +1,10 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createRegistry,PolicyError} from "./registry.mjs";
+const base=(id,extra={})=>({id,name:id,project_id:"genesis",mission:"Perform bounded specialist work.",permissions:["read_project","write_draft"],acceptance_criteria:["Output is reviewed"],...extra});
+test("new agents are draft and cannot act until active",()=>{const r=createRegistry();const a=r.create(base("architect"));assert.equal(a.status,"draft");assert.equal(r.can(a.id,"write_draft"),false);});
+test("child cannot exceed parent permissions",()=>{const r=createRegistry();const p=r.create(base("parent"));r.transition(p.id,"testing");r.transition(p.id,"approved",{evidence:"test report"});r.transition(p.id,"active");assert.throws(()=>r.create(base("child",{parent_agent_id:p.id,permissions:["admin"]})),PolicyError);});
+test("human reserved actions cannot be delegated",()=>{const r=createRegistry();assert.throws(()=>r.create(base("unsafe",{permissions:["send_external_message"]})),PolicyError);});
+test("only founder can approve or activate",()=>{const r=createRegistry();const a=r.create(base("builder"));r.transition(a.id,"testing");assert.throws(()=>r.transition(a.id,"approved",{actor:"agent",evidence:"passed"}),PolicyError);r.transition(a.id,"approved",{evidence:"passed"});r.transition(a.id,"active");assert.equal(r.can(a.id,"write_draft"),true);});
+test("pause immediately revokes operational permission",()=>{const r=createRegistry();const a=r.create(base("worker"));r.transition(a.id,"testing");r.transition(a.id,"approved",{evidence:"passed"});r.transition(a.id,"active");r.pause(a.id);assert.equal(r.can(a.id,"write_draft"),false);});
+test("audit log records creation and transitions",()=>{const r=createRegistry();const a=r.create(base("audited"));r.transition(a.id,"testing");assert.equal(r.audit().length,2);});
