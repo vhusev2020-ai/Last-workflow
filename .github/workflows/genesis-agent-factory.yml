@@ -1,0 +1,24 @@
+name: Genesis Agent Factory Tests
+on:
+  push:
+    branches: [genesis-agent-factory-foundation]
+    paths:
+      - "genesis-agent-factory/**"
+      - ".github/workflows/genesis-agent-factory.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "genesis-agent-factory/**"
+      - ".github/workflows/genesis-agent-factory.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run registry policy tests
+        run: node --test genesis-agent-factory/registry.test.mjs
