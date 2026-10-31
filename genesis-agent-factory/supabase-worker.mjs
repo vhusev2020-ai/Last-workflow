@@ -17,10 +17,22 @@ async function request(path, body) {
   return text ? JSON.parse(text) : null;
 }
 
-const claimed = await request("genesis_claim_task", { p_lease_seconds: 120 });
-const task = Array.isArray(claimed) ? claimed[0] : claimed;
+let claimed = await request("genesis_claim_task", { p_lease_seconds: 120 });
+let task = Array.isArray(claimed) ? claimed[0] : claimed;
+
+// Keep the service visibly alive: when the queue is empty, enqueue and run
+// one bounded health check. This creates a durable heartbeat in Supabase.
 if (!task) {
-  console.log("No ready Genesis tasks.");
+  await request("genesis_enqueue_task", {
+    p_task_type: "health-check",
+    p_payload: { source: "scheduled-worker-heartbeat" },
+    p_max_attempts: 3
+  });
+  claimed = await request("genesis_claim_task", { p_lease_seconds: 120 });
+  task = Array.isArray(claimed) ? claimed[0] : claimed;
+}
+if (!task) {
+  console.log("No ready Genesis tasks; heartbeat enqueue did not yield a claim.");
   process.exit(0);
 }
 
