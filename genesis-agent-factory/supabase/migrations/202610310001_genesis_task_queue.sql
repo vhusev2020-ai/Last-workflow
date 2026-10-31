@@ -113,3 +113,31 @@ revoke all on function public.genesis_claim_task(integer) from public, anon, aut
 revoke all on function public.genesis_finish_task(uuid,uuid,boolean,jsonb,text) from public, anon, authenticated;
 grant execute on function public.genesis_claim_task(integer) to service_role;
 grant execute on function public.genesis_finish_task(uuid,uuid,boolean,jsonb,text) to service_role;
+
+-- Controlled enqueue endpoint for the two allowlisted task types.
+create or replace function public.genesis_enqueue_task(
+  p_task_type text, p_payload jsonb default '{}'::jsonb, p_max_attempts integer default 3
+) returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare new_id uuid;
+begin
+  if p_task_type not in ('echo','health-check') then
+    raise exception 'task type is not allowlisted';
+  end if;
+  if p_max_attempts < 1 or p_max_attempts > 10 then
+    raise exception 'max attempts out of range';
+  end if;
+  insert into public.genesis_tasks(task_type,payload,max_attempts)
+  values (p_task_type,coalesce(p_payload,'{}'::jsonb),p_max_attempts)
+  returning id into new_id;
+  insert into public.genesis_task_events(task_id,event_type,details)
+  values (new_id,'queued',jsonb_build_object('task_type',p_task_type));
+  return new_id;
+end;
+$$;
+
+revoke all on function public.genesis_enqueue_task(text,jsonb,integer) from public, anon, authenticated;
+grant execute on function public.genesis_enqueue_task(text,jsonb,integer) to service_role;
