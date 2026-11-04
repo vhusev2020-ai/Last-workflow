@@ -1,7 +1,7 @@
 name: Genesis Agent Factory Tests
 on:
   push:
-    branches: [genesis-agent-factory-foundation]
+    branches: [main, genesis-agent-factory-foundation]
     paths:
       - "genesis-agent-factory/**"
       - ".github/workflows/genesis-agent-factory.yml"
